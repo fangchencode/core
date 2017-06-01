@@ -2,7 +2,7 @@
 
 use GuzzleHttp\Exception\BadResponseException;
 use GuzzleHttp\Client as GClient;
-use GuzzleHttp\Message\ResponseInterface;
+use GuzzleHttp\Psr7\Request;
 use Sabre\DAV\Client as SClient;
 use Sabre\DAV\Xml\Property\ResourceType;
 use TestHelpers\WebDavHelper;
@@ -15,7 +15,7 @@ trait WebDav {
 	private $davPath = "remote.php/webdav";
 	/** @var boolean*/
 	private $usingOldDavPath = true;
-	/** @var ResponseInterface[] */
+	/** @var array with keys 'response' ResponseInterface[] and 'upload_type' string text describing the type of upload */
 	private $uploadResponses;
 	/** @var array map with user as key and another map as value, which has path as key and etag as value */
 	private $storedETAG = NULL;
@@ -188,10 +188,9 @@ trait WebDav {
 		$options = [];
 		$options['auth'] = [$token, ""];
 
-		$request = $client->createRequest("GET", $fullUrl, $options);
-		$request->addHeader('Range', $range);
+		$request = new Request("GET", $fullUrl, ['Range' => $range]);
 
-		$this->response = $client->send($request);
+		$this->response = $client->send($request, $options);
 	}
 
 	/**
@@ -207,10 +206,9 @@ trait WebDav {
 		$options = [];
 		$options['auth'] = [$token, ""];
 
-		$request = $client->createRequest("GET", $fullUrl, $options);
-		$request->addHeader('Range', $range);
+		$request = new Request("GET", $fullUrl, ['Range' => $range]);
 
-		$this->response = $client->send($request);
+		$this->response = $client->send($request, $options);
 	}
 
 	/**
@@ -275,7 +273,20 @@ trait WebDav {
 			$headerName = $header[0];
 			$expectedHeaderValue = $header[1];
 			$returnedHeader = $this->response->getHeader($headerName);
-			if ($returnedHeader !== $expectedHeaderValue) {
+			if (is_array($returnedHeader)) {
+				if (empty($returnedHeader)) {
+					throw new \Exception(
+						sprintf(
+							"Missing expected header '%s'",
+							$headerName
+						)
+					);
+				}
+				$headerValue = $returnedHeader[0];
+			} else {
+				$headerValue = $returnedHeader;
+			}
+			if ($headerValue !== $expectedHeaderValue) {
 				throw new \Exception(
 					sprintf(
 						"Expected value '%s' for header '%s', got '%s'",
@@ -644,7 +655,7 @@ trait WebDav {
 		$body .= '
 					</oc:filter-files>';
 
-		$response = $client->request('REPORT', $this->makeSabrePath($user, $path), $body);
+		$response = $client->request('REPORT', $this->makeSabrePath($user, $path), $body, []);
 		$parsedResponse = $client->parseMultistatus($response['body']);
 		return $parsedResponse;
 	}
@@ -663,7 +674,7 @@ trait WebDav {
 							 </oc:filter-comments>';
 
 
-		$response = $client->request('REPORT', $this->makeSabrePathNotForFiles($path), $body);
+		$response = $client->request('REPORT', $this->makeSabrePathNotForFiles($path), $body, []);
 
 		$parsedResponse = $client->parseMultistatus($response['body']);
 		return $parsedResponse;
@@ -723,8 +734,9 @@ trait WebDav {
 	 * @param string $source
 	 * @param string $destination
 	 */
-	public function userUploadsAFileTo($user, $source, $destination) {
-		$file = \GuzzleHttp\Stream\Stream::factory(fopen($source, 'r'));
+	public function userUploadsAFileTo($user, $source, $destination)
+	{
+		$file = fopen($source, 'r');
 		try {
 			$this->response = $this->makeDavRequest($user, "PUT", $destination, [], $file);
 		} catch (BadResponseException $e) {
@@ -830,10 +842,15 @@ trait WebDav {
 					$suffix = '-' . $dav . 'dav-regular';
 				}
 				$this->userUploadsAFileTo($user, $source, $destination . $suffix);
-				$responses[] = $this->response;
+				$response = $this->response;
 			} catch (BadResponseException $e) {
-				$responses[] = $e->getResponse();
+				$response = $e->getResponse();
 			}
+
+			$responses[] = [
+				'response' => $response,
+				'upload_type' => $dav . ' regular'
+			];
 
 			// old chunking upload
 			if ($dav === 'old') {
@@ -842,21 +859,33 @@ trait WebDav {
 				}
 				try {
 					$this->userUploadsAFileToWithChunks($user, $source, $destination . $suffix, 'old');
-					$responses[] = $this->response;
+					$response = $this->response;
 				} catch (BadResponseException $e) {
-					$responses[] = $e->getResponse();
+					$response = $e->getResponse();
 				}
+
+				$responses[] = [
+					'response' => $response,
+					'upload_type' => $dav . ' chunking'
+				];
 			}
+
+			// new chunking upload
 			if ($dav === 'new') {
 				if (!$overwriteMode) {
 					$suffix = '-' . $dav . 'dav-newchunking';
 				}
 				try {
 					$this->userUploadsAFileToWithChunks($user, $source, $destination . $suffix, 'new');
-					$responses[] = $this->response;
+					$response = $this->response;
 				} catch (BadResponseException $e) {
-					$responses[] = $e->getResponse();
+					$response = $e->getResponse();
 				}
+
+				$responses[] = [
+					'response' => $response,
+					'upload_type' => $dav . ' chunking'
+				];
 			}
 		}
 
@@ -871,8 +900,8 @@ trait WebDav {
 		foreach ($this->uploadResponses as $response) {
 			PHPUnit_Framework_Assert::assertEquals(
 				$statusCode,
-				$response->getStatusCode(),
-				'Response for ' . $response->getEffectiveUrl() . ' did not return expected status code'
+				$response['response']->getStatusCode(),
+				'Response for dav upload ' . $response['upload_type'] . ' did not return expected status code'
 			);
 		}
 	}
@@ -918,9 +947,8 @@ trait WebDav {
 	 */
 	public function userUploadsAFileWithContentTo($user, $content, $destination)
 	{
-		$file = \GuzzleHttp\Stream\Stream::factory($content);
 		try {
-			$this->response = $this->makeDavRequest($user, "PUT", $destination, [], $file);
+			$this->response = $this->makeDavRequest($user, "PUT", $destination, [], $content);
 			return $this->response->getHeader('oc-fileid');
 		} catch (BadResponseException $e) {
 			// 4xx and 5xx responses cause an exception
@@ -939,14 +967,13 @@ trait WebDav {
 	 */
 	public function userUploadsAFileWithChecksumAndContentTo($user, $checksum, $content, $destination)
 	{
-		$file = \GuzzleHttp\Stream\Stream::factory($content);
 		try {
 			$this->response = $this->makeDavRequest(
 				$user,
 				"PUT",
 				$destination,
 				['OC-Checksum' => $checksum],
-				$file
+				$content
 			);
 		} catch (BadResponseException $e) {
 			// 4xx and 5xx responses cause an exception
@@ -1030,7 +1057,6 @@ trait WebDav {
 	{
 		try {
 			$num -= 1;
-			$data = \GuzzleHttp\Stream\Stream::factory($data);
 			$file = $destination . '-chunking-42-' . $total . '-' . $num;
 			$this->makeDavRequest($user, 'PUT', $file, ['OC-Chunked' => '1'], $data,  "uploads");
 		} catch (\GuzzleHttp\Exception\RequestException $ex) {
@@ -1065,7 +1091,6 @@ trait WebDav {
 	public function userUploadsNewChunkFileOfWithToId($user, $num, $data, $id)
 	{
 		try {
-			$data = \GuzzleHttp\Stream\Stream::factory($data);
 			$destination = '/uploads/'. $user .'/'. $id .'/' . $num;
 			$this->makeDavRequest($user, 'PUT', $destination, [], $data, "uploads");
 		} catch (\GuzzleHttp\Exception\RequestException $ex) {
