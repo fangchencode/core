@@ -513,9 +513,7 @@ class Share20OCS {
 		$afterEvent->setArgument('result', 'success');
 		$this->eventDispatcher->dispatch('share.afterCreate', $afterEvent);
 
-		if ($share->getState() === \OCP\Share::STATE_PENDING) {
-			$this->sendNotification($share);
-		}
+		$this->sendNotification($share);
 
 		return new \OC\OCS\Result($formattedShareAfterCreate);
 	}
@@ -932,6 +930,11 @@ class Share20OCS {
 	 * @param IShare $share share
 	 */
 	private function sendNotification(IShare $share) {
+		$autoAccept = true;
+		if ($share->getState() === \OCP\Share::STATE_PENDING) {
+			$autoAccept = false;
+		}
+
 		$users = [];
 		if ($share->getShareType() === \OCP\Share::SHARE_TYPE_GROUP) {
 			// notify all group members
@@ -949,22 +952,33 @@ class Share20OCS {
 			$notification->setApp('files_sharing')
 				->setUser($userId)
 				->setDateTime(new \DateTime())
-				->setObject('local_share', $share->getId())
-				->setSubject('local_share', [$share->getShareOwner(), $share->getSharedBy(), $share->getNode()->getName()]);
+				->setObject('local_share', $share->getId());
 
-			$endpointUrl = $this->urlGenerator->getAbsoluteURL(
-				$this->urlGenerator->linkTo('', 'ocs/v1.php/apps/files_sharing/api/v1/local_shares/pending/' . $share->getId())
+			$notification->setIcon(
+				$this->urlGenerator->imagePath('core', 'actions/shared.svg')
 			);
+			if ($autoAccept) {
+				$notification->setSubject('local_share_accepted', [$share->getShareOwner(), $share->getSharedBy(), $share->getNode()->getName()]);
+				$notification->setLink(
+					$this->urlGenerator->linkToRouteAbsolute('files.viewcontroller.showFile', ['fileId' => $share->getNode()->getId()])
+				);
+			} else {
+				$notification->setSubject('local_share', [$share->getShareOwner(), $share->getSharedBy(), $share->getNode()->getName()]);
 
-			$declineAction = $notification->createAction();
-			$declineAction->setLabel('decline')
-				->setLink($endpointUrl, 'DELETE');
-			$notification->addAction($declineAction);
+				$endpointUrl = $this->urlGenerator->getAbsoluteURL(
+					$this->urlGenerator->linkTo('', 'ocs/v1.php/apps/files_sharing/api/v1/local_shares/pending/' . $share->getId())
+				);
 
-			$acceptAction = $notification->createAction();
-			$acceptAction->setLabel('accept')
-				->setLink($endpointUrl, 'POST');
-			$notification->addAction($acceptAction);
+				$declineAction = $notification->createAction();
+				$declineAction->setLabel('decline')
+					->setLink($endpointUrl, 'DELETE');
+				$notification->addAction($declineAction);
+
+				$acceptAction = $notification->createAction();
+				$acceptAction->setLabel('accept')
+					->setLink($endpointUrl, 'POST');
+				$notification->addAction($acceptAction);
+			}
 
 			$this->notificationManager->notify($notification);
 		}

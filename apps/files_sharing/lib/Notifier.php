@@ -24,6 +24,7 @@ namespace OCA\Files_sharing;
 
 use OCP\Notification\INotification;
 use OCP\Notification\INotifier;
+use OC\L10N\L10N;
 
 class Notifier implements INotifier {
 	/** @var \OCP\L10N\IFactory */
@@ -54,39 +55,79 @@ class Notifier implements INotifier {
 
 		switch ($notification->getSubject()) {
 			case 'local_share':
-				$params = $notification->getSubjectParameters();
-				if ($params[0] !== $params[1] && $params[1] !== null) {
-					$notification->setParsedSubject(
-						(string) $l->t('User %1$s shared "%3$s" with you (on behalf of %2$s)', $params)
-					);
-				} else {
-					$notification->setParsedSubject(
-						(string)$l->t('User %1$s shared "%3$s" with you', $params)
-					);
-				}
-
-				foreach ($notification->getActions() as $action) {
-					switch ($action->getLabel()) {
-						case 'accept':
-							$action->setParsedLabel(
-								(string) $l->t('Accept')
-							)
-							->setPrimary(true);
-							break;
-
-						case 'decline':
-							$action->setParsedLabel(
-								(string) $l->t('Decline')
-							);
-							break;
-					}
-
-					$notification->addParsedAction($action);
-				}
-				return $notification;
+			case 'local_share_accepted':
+				return $this->format($notification, $l);
 
 			default:
 				throw new \InvalidArgumentException();
 		}
+	}
+
+	private function formatInvite(INotification $notification) {
+		$params = $notification->getSubjectParameters();
+		if ($params[0] !== $params[1] && $params[1] !== null) {
+			$notification->setParsedSubject(
+				(string) $l->t('User %1$s shared "%3$s" with you (on behalf of %2$s)', $params)
+			);
+		} else {
+			$notification->setParsedSubject(
+				(string)$l->t('User %1$s shared "%3$s" with you', $params)
+			);
+		}
+
+		foreach ($notification->getActions() as $action) {
+			switch ($action->getLabel()) {
+				case 'accept':
+					$action->setParsedLabel(
+						(string) $l->t('Accept')
+					)
+					->setPrimary(true);
+					break;
+
+				case 'decline':
+					$action->setParsedLabel(
+						(string) $l->t('Decline')
+					);
+					break;
+			}
+
+			$notification->addParsedAction($action);
+		}
+
+		return $notification;
+	}
+
+	private function format(INotification $notification, L10N $l) {
+		$params = $notification->getSubjectParameters();
+		if ($params[0] !== $params[1] && $params[1] !== null) {
+			$notification->setParsedSubject(
+				(string) $l->t('User %1$s shared "%3$s" with you (on behalf of %2$s)', $params)
+			);
+		} else {
+			$notification->setParsedSubject(
+				(string)$l->t('User %1$s shared "%3$s" with you', $params)
+			);
+		}
+
+		foreach ($notification->getActions() as $action) {
+			switch ($action->getLabel()) {
+				case 'accept':
+					$action->setParsedLabel(
+						(string) $l->t('Accept')
+					)
+					->setPrimary(true);
+					break;
+
+				case 'decline':
+					$action->setParsedLabel(
+						(string) $l->t('Decline')
+					);
+					break;
+			}
+
+			$notification->addParsedAction($action);
+		}
+
+		return $notification;
 	}
 }
