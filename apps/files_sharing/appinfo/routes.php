@@ -80,6 +80,16 @@ API::register('post',
 		[$OCSShare, 'createShare'],
 		'files_sharing');
 
+API::register('post',
+		'/apps/files_sharing/api/v1/shares/pending/{id}',
+		[$OCSShare, 'acceptShare'],
+		'files_sharing');
+
+API::register('delete',
+		'/apps/files_sharing/api/v1/shares/pending/{id}',
+		[$OCSShare, 'declineShare'],
+		'files_sharing');
+
 API::register('get',
 		'/apps/files_sharing/api/v1/shares/{id}',
 		[$OCSShare, 'getShare'],

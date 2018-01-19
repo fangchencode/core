@@ -63,4 +63,14 @@ class OCSShareWrapper {
 		$id = $params['id'];
 		return $this->getShare20OCS()->deleteShare($id);
 	}
+
+	public function acceptShare($params) {
+		$id = $params['id'];
+		return $this->getShare20OCS()->acceptShare($id);
+	}
+
+	public function declineShare($params) {
+		$id = $params['id'];
+		return $this->getShare20OCS()->declineShare($id);
+	}
 }

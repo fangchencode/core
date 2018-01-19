@@ -270,6 +270,14 @@
 				});
 			}
 
+			if (this._sharedWithUser) {
+				// remove pending for now
+				// TODO: display pending shares as well
+				files = _.filter(data, function(share) {
+					return share.state === OC.Share.STATE_ACCEPTED;
+				});
+			}
+
 			// OCS API uses non-camelcased names
 			files = _.chain(files)
 				// convert share data to file data
