@@ -72,13 +72,6 @@
 			$tr.find('td.date').before($tr.children('td:first'));
 			$tr.find('td.filename input:checkbox').remove();
 			$tr.attr('data-share-id', _.pluck(fileData.shares, 'id').join(','));
-			if (this._sharedWithUser) {
-				$tr.attr('data-share-owner', fileData.shareOwner);
-				$tr.attr('data-mounttype', 'shared-root');
-				var permission = parseInt($tr.attr('data-permissions')) | OC.PERMISSION_DELETE;
-				$tr.attr('data-permissions', permission);
-			}
-
 			// add row with expiration date for link only shares - influenced by _createRow of filelist
 			if (this._linksOnly) {
 				var expirationTimestamp = 0;
@@ -103,6 +96,7 @@
 					text = '';
 					modifiedColor = 160;
 				}
+
 				td = $('<td></td>').attr({"class": "date"});
 				td.append($('<span></span>').attr({
 						"class": "modified",
@@ -114,6 +108,33 @@
 
 				$tr.append(td);
 			}
+			if (this._sharedWithUser) {
+				$tr.attr('data-share-owner', fileData.shareOwner);
+				$tr.attr('data-mounttype', 'shared-root');
+				var permission = parseInt($tr.attr('data-permissions')) | OC.PERMISSION_DELETE;
+				$tr.attr('data-permissions', permission);
+				$tr.attr('data-share-state', fileData.shareState);
+
+				var text = '';
+				var shareStateClass;
+				if (fileData.shareState === 2) {
+					text = t('files_sharing', 'Rejected');
+					shareStateClass = 'share-state-rejected';
+				} else if (fileData.shareState === 1) {
+					text = t('files_sharing', 'Pending');
+					shareStateClass = 'share-state-pending';
+				} else {
+					shareStateClass = 'share-state-accepted';
+				}
+				td = $('<td></td>').attr({"class": "share-state"});
+				td.append($('<span></span>').attr({
+						"class": "state",
+					}).text(text)
+				);
+				$tr.addClass(shareStateClass);
+				$tr.append(td);
+			}
+
 			return $tr;
 		},
 
@@ -137,6 +158,10 @@
 				// hide expiration date header for non link only shares
 				if (!this._linksOnly) {
 					this.$el.find('th.column-expiration').addClass('hidden');
+				}
+				if (!this._sharedWithUser) {
+					// hide state column
+					this.$el.find('th.column-state').addClass('hidden');
 				}
 			}
 			else {
@@ -169,6 +194,7 @@
 				data: {
 					format: 'json',
 					shared_with_me: !!this._sharedWithUser,
+					state: 'all',
 					include_tags: true
 				},
 				type: 'GET',
@@ -270,14 +296,6 @@
 				});
 			}
 
-			if (this._sharedWithUser) {
-				// remove pending for now
-				// TODO: display pending shares as well
-				files = _.filter(data, function(share) {
-					return share.state === OC.Share.STATE_ACCEPTED;
-				});
-			}
-
 			// OCS API uses non-camelcased names
 			files = _.chain(files)
 				// convert share data to file data
@@ -305,6 +323,7 @@
 					};
 					if (self._sharedWithUser) {
 						file.shareOwner = share.displayname_owner;
+						file.shareState = share.state;
 						file.name = OC.basename(share.file_target);
 						file.path = OC.dirname(share.file_target);
 						file.permissions = share.permissions;

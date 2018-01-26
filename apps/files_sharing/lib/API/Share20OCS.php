@@ -167,28 +167,32 @@ class Share20OCS {
 		// can only fetch path info if mounted already or if owner
 		if ($share->getState() === \OCP\Share::STATE_ACCEPTED || $share->getShareOwner() === $this->currentUser->getUID()) {
 			$userFolder = $this->rootFolder->getUserFolder($this->currentUser->getUID());
-			$nodes = $userFolder->getById($share->getNodeId());
-
-			if (empty($nodes)) {
-				throw new NotFoundException();
-			}
-
-			$node = $nodes[0];
-
-			$result['path'] = $userFolder->getRelativePath($node->getPath());
-			if ($node instanceOf \OCP\Files\Folder) {
-				$result['item_type'] = 'folder';
-			} else {
-				$result['item_type'] = 'file';
-			}
-			$result['mimetype'] = $node->getMimeType();
-			$result['storage_id'] = $node->getStorage()->getId();
-			$result['storage'] = $node->getStorage()->getCache()->getNumericStorageId();
-			$result['item_source'] = strval($node->getId());
-			$result['file_source'] = strval($node->getId());
-			$result['file_parent'] = strval($node->getParent()->getId());
-			$result['file_target'] = $share->getTarget();
+		} else {
+			// need to go through owner user for pending shares
+			$userFolder = $this->rootFolder->getUserFolder($share->getShareOwner());
 		}
+
+		$nodes = $userFolder->getById($share->getNodeId());
+
+		if (empty($nodes)) {
+			throw new NotFoundException();
+		}
+
+		$node = $nodes[0];
+
+		$result['path'] = $userFolder->getRelativePath($node->getPath());
+		if ($node instanceOf \OCP\Files\Folder) {
+			$result['item_type'] = 'folder';
+		} else {
+			$result['item_type'] = 'file';
+		}
+		$result['mimetype'] = $node->getMimeType();
+		$result['storage_id'] = $node->getStorage()->getId();
+		$result['storage'] = $node->getStorage()->getCache()->getNumericStorageId();
+		$result['item_source'] = strval($node->getId());
+		$result['file_source'] = strval($node->getId());
+		$result['file_parent'] = strval($node->getParent()->getId());
+		$result['file_target'] = $share->getTarget();
 
 		if ($share->getShareType() === \OCP\Share::SHARE_TYPE_USER) {
 			$sharedWith = $this->userManager->get($share->getSharedWith());
