@@ -27,17 +27,20 @@ OCA.Sharing.App = {
 			return this._inFileList;
 		}
 
+		var fileActions = this._createFileActions();
+
 		this._inFileList = new OCA.Sharing.FileList(
 			$el,
 			{
 				id: 'shares.self',
 				scrollContainer: $('#app-content'),
 				sharedWithUser: true,
-				fileActions: this._createFileActions(),
+				fileActions: fileActions,
 				config: OCA.Files.App.getFilesConfig()
 			}
 		);
 
+		this._registerPendingShareActions(fileActions);
 		this._extendFileList(this._inFileList);
 		this._inFileList.appName = t('files_sharing', 'Shared with you');
 		this._inFileList.$el.find('#emptycontent').html('<div class="icon-share"></div>' +
@@ -148,6 +151,7 @@ OCA.Sharing.App = {
 			OCA.Files.App.fileList.changeDirectory(OC.joinPaths(context.$file.attr('data-path'), filename), true, true);
 		});
 		fileActions.setDefault('dir', 'Open');
+
 		return fileActions;
 	},
 
@@ -171,6 +175,45 @@ OCA.Sharing.App = {
 	_extendFileList: function(fileList) {
 		// remove size column from summary
 		fileList.fileSummary.$el.find('.filesize').remove();
+	},
+
+	_registerPendingShareActions: function(fileActions) {
+		// register pending share actions
+		fileActions.registerAction({
+			name: 'Accept',
+			type: OCA.Files.FileActions.TYPE_INLINE,
+			displayName: t('files', 'Accept'),
+			mime: 'all',
+			permissions: OC.PERMISSION_READ,
+			actionHandler: function (filename, context) {
+				// TODO
+				console.log('Accept share');
+			}
+		});
+		fileActions.registerAction({
+			name: 'Reject',
+			type: OCA.Files.FileActions.TYPE_INLINE,
+			displayName: t('files', 'Reject'),
+			mime: 'all',
+			permissions: OC.PERMISSION_READ,
+			actionHandler: function (filename, context) {
+				// TODO
+				console.log('Reject share');
+			}
+		});
+
+		fileActions.addAdvancedFilter(function(actions, $tr) {
+			if ($tr.attr('data-state') === OC.Share.STATE_ACCEPTED) {
+				delete(actions['Accept']);
+				delete(actions['Reject']);
+				return actions;
+			}
+
+			return {
+				'Accept': actions['Accept'],
+				'Reject': actions['Reject'],
+			};
+		});
 	}
 };
 

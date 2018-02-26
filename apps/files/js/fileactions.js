@@ -37,6 +37,8 @@
 		defaults: {},
 		icons: {},
 
+		_actionFilters: [],
+
 		/**
 		 * @deprecated
 		 */
@@ -521,6 +523,7 @@
 				this.getCurrentType(),
 				this.getCurrentPermissions()
 			);
+			actions = this._advancedFilter(actions, $tr);
 			var nameLinks;
 			if ($tr.data('renaming')) {
 				return;
@@ -650,6 +653,30 @@
 			});
 
 			this.setDefault('dir', 'Open');
+		},
+
+		/**
+		 * To be overridden by subclasses to add additional filtering of actions based
+		 * on file properties
+		 *
+		 * @param {String.<String,OCA.Files.FileAction>} actions action list with action name as string
+		 * @param $tr jQuery file element
+		 */
+		_advancedFilter: function(actions, $tr) {
+			_.each(this._actionFiters, function(callback) {
+				actions = callback(actions, $tr);
+			});
+
+			return actions;
+		},
+
+		/**
+		 * Adds a callback to filter actions
+		 *
+		 * @param {Function} callback callback
+		 */
+		addAdvancedFilter: function(callback) {
+			this._actionFilters.append(callback);
 		}
 	};
 
