@@ -249,10 +249,11 @@ OCA.Sharing.App = {
 
 			var newActions = [];
 			if (shareState === OC.Share.STATE_PENDING || shareState === OC.Share.STATE_REJECTED) {
-				newActions.push(actions['Accept']);
+				newActions.push(actions.Accept);
 			}
 			if (shareState === OC.Share.STATE_PENDING) {
-				newActions.push(actions['Reject']);
+				actions.Reject.type = OCA.Files.FileActions.TYPE_INLINE;
+				newActions.push(actions.Reject);
 			}
 
 			return newActions;
