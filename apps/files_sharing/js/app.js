@@ -177,42 +177,79 @@ OCA.Sharing.App = {
 		fileList.fileSummary.$el.find('.filesize').remove();
 	},
 
+	_setShareState: function(fileId, state) {
+		var method = 'POST';
+		if (state === OC.Share.STATE_REJECT) {
+			method = 'DELETE';
+		}
+
+		return $.ajax({
+			url: OC.linkToOCS('apps/files_sharing/api/v1') + 'shares/pending/' + encodeURIComponent(fileId) + '?format=json',
+			contentType: 'application/json',
+			dataType: 'json',
+			type: method,
+		}).fail(function(response) {
+			var message = '';
+			// show message if it is available
+			if(response.responseJSON && response.responseJSON.message) {
+				message = ': ' + response.responseJSON.message;
+			}
+			OC.Notification.show(t('files', 'An error occurred while updating share state: ' + message), {type: 'error'});
+		});
+	},
+
 	_registerPendingShareActions: function(fileActions) {
+		var self = this;
+
 		// register pending share actions
 		fileActions.registerAction({
 			name: 'Accept',
 			type: OCA.Files.FileActions.TYPE_INLINE,
-			displayName: t('files', 'Accept'),
+			displayName: t('files', 'Accept Share'),
 			mime: 'all',
 			permissions: OC.PERMISSION_READ,
 			actionHandler: function (filename, context) {
-				// TODO
-				console.log('Accept share');
+				context.fileList.showFileBusyState(filename, true);
+				self._setShareState(context.fileInfoModel.get('shareId'), OC.Share.STATE_ACCEPTED).then(function() {
+					context.fileList.showFileBusyState(filename, false);
+				}).done(function() {
+					context.fileInfoModel.set('shareState', OC.Share.STATE_ACCEPTED);
+				});
 			}
 		});
 		fileActions.registerAction({
 			name: 'Reject',
 			type: OCA.Files.FileActions.TYPE_INLINE,
-			displayName: t('files', 'Reject'),
+			displayName: t('files', 'Reject Share'),
 			mime: 'all',
 			permissions: OC.PERMISSION_READ,
 			actionHandler: function (filename, context) {
-				// TODO
-				console.log('Reject share');
+				context.fileList.showFileBusyState(filename, true);
+				self._setShareState(context.fileInfoModel.get('shareId'), OC.Share.STATE_REJECTED).then(function() {
+					context.fileList.showFileBusyState(filename, false);
+				}).done(function() {
+					context.fileInfoModel.set('shareState', OC.Share.STATE_REJECTED);
+				});
 			}
 		});
 
 		fileActions.addAdvancedFilter(function(actions, $tr) {
-			if ($tr.attr('data-state') === OC.Share.STATE_ACCEPTED) {
+			var shareState = parseInt($tr.attr('data-share-state'), 10);
+			if (shareState === OC.Share.STATE_ACCEPTED) {
 				delete(actions['Accept']);
 				delete(actions['Reject']);
 				return actions;
 			}
 
-			return {
-				'Accept': actions['Accept'],
-				'Reject': actions['Reject'],
-			};
+			var newActions = [];
+			if (shareState === OC.Share.STATE_PENDING || shareState === OC.Share.STATE_REJECTED) {
+				newActions.push(actions['Accept']);
+			}
+			if (shareState === OC.Share.STATE_PENDING) {
+				newActions.push(actions['Reject']);
+			}
+
+			return newActions;
 		});
 	}
 };

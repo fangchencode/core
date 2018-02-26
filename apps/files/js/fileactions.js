@@ -177,6 +177,7 @@
 			this.icons = {};
 			this.currentFile = null;
 			this._updateListeners = [];
+			this._actionFilters = [];
 		},
 		/**
 		 * Sets the default action for a given mime type.
@@ -545,6 +546,8 @@
 				fileList: fileList
 			};
 
+
+			var hasDropDownActions = false;
 			$.each(actions, function (name, actionSpec) {
 				if (actionSpec.type === FileActions.TYPE_INLINE) {
 					self._renderInlineAction(
@@ -553,9 +556,14 @@
 						context
 					);
 				}
+				if (!actionSpec.type || actionSpec.type === FileActions.TYPE_DROPDOWN) {
+					hasDropDownActions = true;
+				}
 			});
 
-			this._renderMenuTrigger($tr, context);
+			if (hasDropDownActions) {
+				this._renderMenuTrigger($tr, context);
+			}
 
 			if (triggerEvent){
 				fileList.$fileList.trigger(jQuery.Event("fileActionsReady", {fileList: fileList, $files: $tr}));
@@ -663,9 +671,9 @@
 		 * @param $tr jQuery file element
 		 */
 		_advancedFilter: function(actions, $tr) {
-			_.each(this._actionFiters, function(callback) {
-				actions = callback(actions, $tr);
-			});
+			for (var i = 0; i < this._actionFilters.length; i++) {
+				actions = this._actionFilters[i](actions, $tr);
+			}
 
 			return actions;
 		},
@@ -676,7 +684,7 @@
 		 * @param {Function} callback callback
 		 */
 		addAdvancedFilter: function(callback) {
-			this._actionFilters.append(callback);
+			this._actionFilters.push(callback);
 		}
 	};
 

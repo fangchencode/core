@@ -162,14 +162,16 @@ class Share20OCS {
 		if ($received) {
 			// also add state
 			$result['state'] = $share->getState();
-		}
 
-		// can only fetch path info if mounted already or if owner
-		if ($share->getState() === \OCP\Share::STATE_ACCEPTED || $share->getShareOwner() === $this->currentUser->getUID()) {
-			$userFolder = $this->rootFolder->getUserFolder($this->currentUser->getUID());
+			// can only fetch path info if mounted already or if owner
+			if ($share->getState() === \OCP\Share::STATE_ACCEPTED || $share->getShareOwner() === $this->currentUser->getUID()) {
+				$userFolder = $this->rootFolder->getUserFolder($this->currentUser->getUID());
+			} else {
+				// need to go through owner user for pending shares
+				$userFolder = $this->rootFolder->getUserFolder($share->getShareOwner());
+			}
 		} else {
-			// need to go through owner user for pending shares
-			$userFolder = $this->rootFolder->getUserFolder($share->getShareOwner());
+			$userFolder = $this->rootFolder->getUserFolder($this->currentUser->getUID());
 		}
 
 		$nodes = $userFolder->getById($share->getNodeId());
@@ -908,7 +910,7 @@ class Share20OCS {
 		}
 
 		try {
-			$share = $this->shareManager->updateReceivedShareState($share, $this->currentUser->getUID(), $state);
+			$this->shareManager->updateReceivedShareState($share, $this->currentUser->getUID(), $state);
 		} catch (\Exception $e) {
 			$share->getNode()->unlock(ILockingProvider::LOCK_SHARED);
 			return new \OC\OCS\Result(null, 400, $e->getMessage());

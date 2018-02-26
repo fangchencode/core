@@ -68,8 +68,9 @@
 		_createRow: function(fileData) {
 			// TODO: hook earlier and render the whole row here
 			var $tr = OCA.Files.FileList.prototype._createRow.apply(this, arguments);
+			var $dateColumn = $tr.find('td.date');
 			$tr.find('.filesize').remove();
-			$tr.find('td.date').before($tr.children('td:first'));
+			$dateColumn.before($tr.children('td:first'));
 			$tr.find('td.filename input:checkbox').remove();
 			$tr.attr('data-share-id', _.pluck(fileData.shares, 'id').join(','));
 			// add row with expiration date for link only shares - influenced by _createRow of filelist
@@ -132,7 +133,7 @@
 					}).text(text)
 				);
 				$tr.addClass(shareStateClass);
-				$tr.append(td);
+				$dateColumn.before(td);
 			}
 
 			return $tr;
@@ -248,6 +249,13 @@
 
 			this.setFiles(files);
 			return true;
+		},
+
+		elementToFile: function($el) {
+			var fileInfo = OCA.Files.FileList.prototype.elementToFile.apply(this, arguments);
+			fileInfo.shareId = $el.attr('data-share-id');
+			fileInfo.shareState = parseInt($el.attr('data-share-state'), 10);
+			return fileInfo;
 		},
 
 		_makeFilesFromRemoteShares: function(data) {
