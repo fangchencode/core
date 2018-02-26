@@ -118,12 +118,15 @@
 
 				var text = '';
 				var shareStateClass;
-				if (fileData.shareState === 2) {
+				var iconClass;
+				if (fileData.shareState === OC.Share.STATE_REJECTED) {
 					text = t('files_sharing', 'Rejected');
 					shareStateClass = 'share-state-rejected';
-				} else if (fileData.shareState === 1) {
+					iconClass = 'icon-close';
+				} else if (fileData.shareState === OC.Share.STATE_PENDING) {
 					text = t('files_sharing', 'Pending');
 					shareStateClass = 'share-state-pending';
+					iconClass = 'icon-add';
 				} else {
 					shareStateClass = 'share-state-accepted';
 				}
@@ -134,6 +137,12 @@
 				);
 				$tr.addClass(shareStateClass);
 				$dateColumn.before(td);
+
+				if (iconClass) {
+					$tr.find('td:first').prepend(
+						$('<div class="share-state"><span class="icon ' + iconClass + '"></span></div>')
+					);
+				}
 			}
 
 			return $tr;

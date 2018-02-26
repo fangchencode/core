@@ -1,3 +1,15 @@
-#filestable.shareList .summary .filesize {
-	display: none;
+#app-content-sharingin td>.share-state {
+	display: block;
+    float: left;
+    width: 30px;
+    line-height: 100%;
+    text-align: center;
+	padding: 17px 8px;
+	opacity: 0.3;
+}
+
+#app-content-sharingin td>.share-state .icon {
+    display: inline-block;
+    vertical-align: middle;
+    background-size: 16px 16px;
 }
