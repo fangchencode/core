@@ -179,7 +179,7 @@ OCA.Sharing.App = {
 
 	_setShareState: function(fileId, state) {
 		var method = 'POST';
-		if (state === OC.Share.STATE_REJECT) {
+		if (state === OC.Share.STATE_REJECTED) {
 			method = 'DELETE';
 		}
 
@@ -207,6 +207,7 @@ OCA.Sharing.App = {
 			type: OCA.Files.FileActions.TYPE_INLINE,
 			displayName: t('files', 'Accept Share'),
 			mime: 'all',
+			iconClass: 'icon-checkmark',
 			permissions: OC.PERMISSION_READ,
 			actionHandler: function (filename, context) {
 				context.fileList.showFileBusyState(filename, true);
@@ -221,6 +222,7 @@ OCA.Sharing.App = {
 			name: 'Reject',
 			type: OCA.Files.FileActions.TYPE_INLINE,
 			displayName: t('files', 'Reject Share'),
+			iconClass: 'icon-close',
 			mime: 'all',
 			permissions: OC.PERMISSION_READ,
 			actionHandler: function (filename, context) {
@@ -237,7 +239,11 @@ OCA.Sharing.App = {
 			var shareState = parseInt($tr.attr('data-share-state'), 10);
 			if (shareState === OC.Share.STATE_ACCEPTED) {
 				delete(actions['Accept']);
-				delete(actions['Reject']);
+				if (!OC.getCapabilities()['files_sharing']['auto_accept_share']) {
+					// move "Reject" into drop down to replace "Delete" action
+					actions.Reject.type = OCA.Files.FileActions.TYPE_DROPDOWN;
+					delete(actions['Delete']);
+				}
 				return actions;
 			}
 
