@@ -248,6 +248,7 @@ OCA.Sharing.App = {
 			}
 
 			var newActions = [];
+			newActions.push(actions.Share);
 			if (shareState === OC.Share.STATE_PENDING || shareState === OC.Share.STATE_REJECTED) {
 				newActions.push(actions.Accept);
 			}

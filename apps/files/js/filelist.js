@@ -478,11 +478,10 @@
 			if (!this._detailsView) {
 				return;
 			}
-			this._updateDetailsView(fileName);
+			this._updateDetailsView(fileName, true);
 			if (tabId) {
 				this._detailsView.selectTab(tabId);
 			}
-			OC.Apps.showAppSidebar(this._detailsView.$el);
 		},
 
 		/**
