@@ -158,6 +158,17 @@
 			this._sharedWithUser = !!state;
 		},
 
+		_updateDetailsView: function(fileName, show) {
+			var $tr = this.findFileEl(fileName);
+			var shareState = parseInt($tr.attr('data-share-state'), 10);
+
+			if (shareState !== OC.Share.STATE_ACCEPTED) {
+				show = false;
+			}
+
+			return OCA.Files.FileList.prototype._updateDetailsView.call(this, fileName, show);
+		},
+
 		updateEmptyContent: function() {
 			var dir = this.getCurrentDirectory();
 			if (dir === '/') {

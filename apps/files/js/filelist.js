@@ -475,6 +475,9 @@
 		 * @param {string} [tabId] optional tab id to select
 		 */
 		showDetailsView: function(fileName, tabId) {
+			if (!this._detailsView) {
+				return;
+			}
 			this._updateDetailsView(fileName);
 			if (tabId) {
 				this._detailsView.selectTab(tabId);
@@ -495,7 +498,7 @@
 
 			// show defaults to true
 			show = _.isUndefined(show) || !!show;
-			var oldFileInfo = this._detailsView.getFileInfo();
+			var oldFileInfo = this._currentFileModel;
 			if (oldFileInfo) {
 				// TODO: use more efficient way, maybe track the highlight
 				this.$fileList.children().filterAttr('data-id', '' + oldFileInfo.get('id')).removeClass('highlighted');
@@ -514,6 +517,8 @@
 
 			if (show && this._detailsView.$el.hasClass('disappear')) {
 				OC.Apps.showAppSidebar(this._detailsView.$el);
+			} else if (show === false) {
+				OC.Apps.hideAppSidebar(this._detailsView.$el);
 			}
 
 			var $tr = this.findFileEl(fileName);
@@ -523,8 +528,12 @@
 
 			$tr.addClass('highlighted');
 
-			this._detailsView.setFileInfo(model);
-			this._detailsView.$el.scrollTop(0);
+			if (show === false) {
+				this._detailsView.setFileInfo(null);
+			} else {
+				this._detailsView.setFileInfo(model);
+				this._detailsView.$el.scrollTop(0);
+			}
 		},
 
 		/**
