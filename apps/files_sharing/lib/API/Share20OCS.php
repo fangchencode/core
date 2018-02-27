@@ -39,6 +39,7 @@ use OCP\Share\IManager;
 use OCP\Share\IShare;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\EventDispatcher\GenericEvent;
+use OCA\Files_Sharing\Service\NotificationPublisher;
 
 /**
  * Class Share20OCS
@@ -54,7 +55,7 @@ class Share20OCS {
 	/** @var IUserManager */
 	private $userManager;
 	/** @var \OCP\Notification\IManager */
-	private $notificationManager;
+	private $notificationPublisher;
 	/** @var IRequest */
 	private $request;
 	/** @var IRootFolder */
@@ -82,7 +83,7 @@ class Share20OCS {
 	 * @param IManager $shareManager
 	 * @param IGroupManager $groupManager
 	 * @param IUserManager $userManager
-	 * @param \OCP\Notification\IManager $notificationManager
+	 * @param NotificationPublisher $notificationPublisher
 	 * @param IRequest $request
 	 * @param IRootFolder $rootFolder
 	 * @param IURLGenerator $urlGenerator
@@ -95,7 +96,7 @@ class Share20OCS {
 			IManager $shareManager,
 			IGroupManager $groupManager,
 			IUserManager $userManager,
-			\OCP\Notification\IManager $notificationManager,
+			NotificationPublisher $notificationPublisher,
 			IRequest $request,
 			IRootFolder $rootFolder,
 			IURLGenerator $urlGenerator,
@@ -107,7 +108,7 @@ class Share20OCS {
 		$this->shareManager = $shareManager;
 		$this->userManager = $userManager;
 		$this->groupManager = $groupManager;
-		$this->notificationManager = $notificationManager;
+		$this->notificationPublisher = $notificationPublisher;
 		$this->request = $request;
 		$this->rootFolder = $rootFolder;
 		$this->urlGenerator = $urlGenerator;
@@ -528,7 +529,7 @@ class Share20OCS {
 		$afterEvent->setArgument('result', 'success');
 		$this->eventDispatcher->dispatch('share.afterCreate', $afterEvent);
 
-		$this->sendNotification($share);
+		$this->notificationPublisher->sendNotification($share);
 
 		return new \OC\OCS\Result($formattedShareAfterCreate);
 	}
@@ -1007,63 +1008,4 @@ class Share20OCS {
 		return $share;
 	}
 
-	/**
-	 * Send notification for accepting share
-	 *
-	 * @param IShare $share share
-	 */
-	private function sendNotification(IShare $share) {
-		$autoAccept = true;
-		if ($share->getState() === \OCP\Share::STATE_PENDING) {
-			$autoAccept = false;
-		}
-
-		$users = [];
-		if ($share->getShareType() === \OCP\Share::SHARE_TYPE_GROUP) {
-			// notify all group members
-			$group = $this->groupManager->get($share->getSharedWith());
-			// TODO: scale / chunk / ...
-			$users = array_map(function(IUser $user) {
-				return $user->getUID();
-			}, $group->getUsers());
-		} else if ($share->getShareType() === \OCP\Share::SHARE_TYPE_USER) {
-			$users = [$share->getSharedWith()];
-		}
-
-		foreach ($users as $userId) {
-			$notification = $this->notificationManager->createNotification();
-			$notification->setApp('files_sharing')
-				->setUser($userId)
-				->setDateTime(new \DateTime())
-				->setObject('local_share', $share->getId());
-
-			$notification->setIcon(
-				$this->urlGenerator->imagePath('core', 'actions/shared.svg')
-			);
-			if ($autoAccept) {
-				$notification->setSubject('local_share_accepted', [$share->getShareOwner(), $share->getSharedBy(), $share->getNode()->getName()]);
-				$notification->setLink(
-					$this->urlGenerator->linkToRouteAbsolute('files.viewcontroller.showFile', ['fileId' => $share->getNode()->getId()])
-				);
-			} else {
-				$notification->setSubject('local_share', [$share->getShareOwner(), $share->getSharedBy(), $share->getNode()->getName()]);
-
-				$endpointUrl = $this->urlGenerator->getAbsoluteURL(
-					$this->urlGenerator->linkTo('', 'ocs/v1.php/apps/files_sharing/api/v1/shares/pending/' . $share->getId())
-				);
-
-				$declineAction = $notification->createAction();
-				$declineAction->setLabel('decline')
-					->setLink($endpointUrl, 'DELETE');
-				$notification->addAction($declineAction);
-
-				$acceptAction = $notification->createAction();
-				$acceptAction->setLabel('accept')
-					->setLink($endpointUrl, 'POST');
-				$notification->addAction($acceptAction);
-			}
-
-			$this->notificationManager->notify($notification);
-		}
-	}
 }

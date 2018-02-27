@@ -68,7 +68,7 @@ $this->create('sharing_external_add', '/external')
 
 //TODO: SET: mail notification, waiting for PR #4689 to be accepted
 
-$OCSShare = new \OCA\Files_Sharing\API\OCSShareWrapper();
+$OCSShare = new \OCA\Files_Sharing\API\OCSShareWrapper($application);
 
 API::register('get',
 		'/apps/files_sharing/api/v1/shares',

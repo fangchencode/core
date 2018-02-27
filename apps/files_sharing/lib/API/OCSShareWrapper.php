@@ -20,7 +20,16 @@
  */
 namespace OCA\Files_Sharing\API;
 
+use OCA\Files_Sharing\AppInfo\Application;
+
 class OCSShareWrapper {
+
+	/** @var Application */
+	private $application;
+
+	public function __construct(Application $application) {
+		$this->application = $application;
+	}
 
 	/**
 	 * @return Share20OCS
@@ -30,7 +39,8 @@ class OCSShareWrapper {
 			\OC::$server->getShareManager(),
 			\OC::$server->getGroupManager(),
 			\OC::$server->getUserManager(),
-			\OC::$server->getNotificationManager(),
+			// TODO: notificationPublisher
+			$this->application->getContainer()->query(\OCA\Files_Sharing\Service\NotificationPublisher::class),
 			\OC::$server->getRequest(),
 			\OC::$server->getRootFolder(),
 			\OC::$server->getURLGenerator(),
